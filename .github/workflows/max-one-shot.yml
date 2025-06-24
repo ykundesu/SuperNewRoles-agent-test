@@ -38,4 +38,4 @@ jobs:
           GITHUB_EVENT_PATH:    ${{ github.event_path }}
           GITHUB_WORKSPACE:     ${{ github.workspace }}
         run: |
-          python tools/issue_coder.py
+          python bot.py
