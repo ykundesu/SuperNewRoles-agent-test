@@ -73,6 +73,10 @@ public class NekoKabochaRevenge : AbilityBase
     {
         if (data.target != null && data.target == ExPlayerControl.LocalPlayer && data.killer != null)
         {
+            // 自殺の場合は復讐しない（無限ループ防止）
+            if (data.killer == data.target)
+                return;
+
             bool canRevenge = false;
             ExPlayerControl killer = data.killer;
 
