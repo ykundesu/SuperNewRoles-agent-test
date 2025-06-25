@@ -52,6 +52,7 @@ public class NekoKabochaRevenge : AbilityBase
 {
     private EventListener<MurderEventData> _onMurderEvent;
     private EventListener<WrapUpEventData> _onWrapUpEvent;
+    private HashSet<ExPlayerControl> _revengedPlayers = new HashSet<ExPlayerControl>();
 
     public NekoKabochaData Data { get; }
 
@@ -73,6 +74,14 @@ public class NekoKabochaRevenge : AbilityBase
     {
         if (data.target != null && data.target == ExPlayerControl.LocalPlayer && data.killer != null)
         {
+            // 自殺や自己への復讐を防ぐ
+            if (data.killer == data.target)
+                return;
+
+            // 既に復讐済みのプレイヤーには再度復讐しない
+            if (_revengedPlayers.Contains(data.killer))
+                return;
+
             bool canRevenge = false;
             ExPlayerControl killer = data.killer;
 
@@ -85,7 +94,10 @@ public class NekoKabochaRevenge : AbilityBase
                 canRevenge = true;
 
             if (canRevenge)
+            {
+                _revengedPlayers.Add(killer);
                 ExPlayerControl.LocalPlayer.RpcCustomDeath(killer, CustomDeathType.Kill);
+            }
         }
     }
 
