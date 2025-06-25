@@ -191,14 +191,13 @@ public class BlackHatHackerAbility : AbilityBase
             .Where(x => x.IsDead() || data?.exiled?.PlayerId == x.PlayerId)
             .Select(x => x.PlayerId).ToList();
 
-        // 感染者がいない場合、かつ設定が有効な場合にハック回数を補充
+        // 感染者がいない場合、かつ設定が有効な場合、かつハック回数が残っていない場合にのみハック回数を補充
         if (Data.IsNotInfectionIncrease &&
+            HackButton != null &&
+            HackButton.Count <= 0 &&
             !InfectionTimer.Any(kvp => kvp.Value >= Data.HackInfectiousTime && !DeadPlayers.Contains(kvp.Key)))
         {
-            if (HackButton != null) // HackButtonがnullでないことを確認
-            {
-                HackButton.Count += 1; // 設定されている最大回数に戻す（または1回増やすなど、仕様に応じて変更）
-            }
+            HackButton.Count = 1; // 1回のみ補充
         }
     }
 
