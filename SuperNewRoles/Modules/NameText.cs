@@ -137,18 +137,21 @@ public static class NameText
         if (player.VoteArea != null && player.VoteArea.PlayerIcon?.cosmetics?.nameText != null)
             player.VoteArea.NameText.text += text;
     }
+    private static float _lastUpdateTime = 0f;
+    private const float UPDATE_THROTTLE_INTERVAL = 0.1f; // Throttle updates to 10fps instead of every frame
+    
     public static void RegisterNameTextUpdateEvent()
     {
-        TaskCompleteEvent.Instance.AddListener(new(x => UpdateNameInfo(x.player)));
+        TaskCompleteEvent.Instance.AddListener(new(x => RequestNameInfoUpdate(x.player)));
         MurderEvent.Instance.AddListener(new(x =>
         {
-            UpdateNameInfo(x.killer);
-            UpdateNameInfo(x.target);
+            RequestNameInfoUpdate(x.killer);
+            RequestNameInfoUpdate(x.target);
         }));
-        DieEvent.Instance.AddListener(x => { if (x.player?.PlayerId == ExPlayerControl.LocalPlayer?.PlayerId) new LateTask(() => UpdateAllNameInfo(), 0.5f); });
-        WrapUpEvent.Instance.AddListener(x => UpdateAllNameInfo());
-        MeetingStartEvent.Instance.AddListener(x => UpdateAllNameInfo());
-        FixedUpdateEvent.Instance.AddListener(UpdateAllVisiable);
+        DieEvent.Instance.AddListener(x => { if (x.player?.PlayerId == ExPlayerControl.LocalPlayer?.PlayerId) new LateTask(() => RequestAllNameInfoUpdate(), 0.5f); });
+        WrapUpEvent.Instance.AddListener(x => RequestAllNameInfoUpdate());
+        MeetingStartEvent.Instance.AddListener(x => RequestAllNameInfoUpdate());
+        FixedUpdateEvent.Instance.AddListener(ThrottledUpdateAllVisiable);
         _lastDead = new();
     }
     [HarmonyPatch(typeof(HudOverrideSystemType), nameof(HudOverrideSystemType.UpdateSystem))]
@@ -162,7 +165,7 @@ public static class NameText
         public static void Postfix(HudOverrideSystemType __instance)
         {
             if (__instance.IsActive && !_lastActive)
-                UpdateAllNameInfo();
+                RequestAllNameInfoUpdate();
         }
     }
     private static Dictionary<ExPlayerControl, bool> _lastDead = new();
@@ -199,6 +202,48 @@ public static class NameText
         if (player.MeetingInfoText != null)
             player.MeetingInfoText.gameObject.SetActive(visiable);
     }
+    private static readonly HashSet<ExPlayerControl> _pendingUpdates = new();
+    private static bool _allUpdateRequested = false;
+    
+    private static void RequestNameInfoUpdate(ExPlayerControl player)
+    {
+        if (player != null)
+            _pendingUpdates.Add(player);
+    }
+    
+    private static void RequestAllNameInfoUpdate()
+    {
+        _allUpdateRequested = true;
+    }
+    
+    private static void ThrottledUpdateAllVisiable()
+    {
+        if (Time.time - _lastUpdateTime < UPDATE_THROTTLE_INTERVAL)
+            return;
+            
+        _lastUpdateTime = Time.time;
+        
+        // Process pending individual updates first
+        if (_pendingUpdates.Count > 0)
+        {
+            foreach (var player in _pendingUpdates)
+                UpdateNameInfo(player);
+            _pendingUpdates.Clear();
+        }
+        
+        // Process all update request
+        if (_allUpdateRequested)
+        {
+            UpdateAllNameInfo();
+            _allUpdateRequested = false;
+        }
+        else
+        {
+            // Regular visibility update (lighter than full name info update)
+            UpdateAllVisiable();
+        }
+    }
+    
     public static void UpdateAllNameInfo()
     {
         foreach (var player in ExPlayerControl.ExPlayerControls)

@@ -102,7 +102,16 @@ public class ExPlayerControl
             return hasAbility;
         }
 
-        hasAbility = PlayerAbilities.Any(x => x.GetType().Name == abilityName);
+        // Optimized ability lookup using direct iteration instead of LINQ
+        hasAbility = false;
+        for (int i = 0; i < PlayerAbilities.Count; i++)
+        {
+            if (PlayerAbilities[i].GetType().Name == abilityName)
+            {
+                hasAbility = true;
+                break;
+            }
+        }
         _hasAbilityCache[abilityName] = hasAbility;
         return hasAbility;
     }
@@ -113,7 +122,16 @@ public class ExPlayerControl
             return hasAbility;
         }
 
-        hasAbility = PlayerAbilities.Any(x => x is T);
+        // Optimized ability lookup using direct iteration instead of LINQ
+        hasAbility = false;
+        for (int i = 0; i < PlayerAbilities.Count; i++)
+        {
+            if (PlayerAbilities[i] is T)
+            {
+                hasAbility = true;
+                break;
+            }
+        }
         _hasAbilityCache[typeof(T).Name] = hasAbility;
         return hasAbility;
     }

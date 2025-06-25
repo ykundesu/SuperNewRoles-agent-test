@@ -67,13 +67,26 @@ public class Drone : MonoBehaviour
         RemainingTurn = (int)DroneStayTurn;
     }
 
+    private static readonly Vector3 _reusableVector = Vector3.zero;
+    private static readonly Color _semiTransparentColor = new(1f, 1f, 1f, 0.5f);
+    private float _hoverUpdateTimer = 0f;
+    private const float HOVER_UPDATE_INTERVAL = 0.02f; // Reduce hover update frequency
+    
     public void Update()
     {
         if (IsActive)
         {
-            Renderer.transform.localPosition = new(0f, Mathf.Sin(HoveringTimer) / 20f);
-            HoveringTimer += Time.deltaTime;
-            if (HoveringTimer > Mathf.PI * 2) HoveringTimer -= Mathf.PI * 2;
+            // Reduce hovering animation update frequency
+            _hoverUpdateTimer += Time.deltaTime;
+            if (_hoverUpdateTimer >= HOVER_UPDATE_INTERVAL)
+            {
+                _hoverUpdateTimer = 0f;
+                // Reuse vector instead of creating new one
+                _reusableVector.Set(0f, Mathf.Sin(HoveringTimer) / 20f, 0f);
+                Renderer.transform.localPosition = _reusableVector;
+                HoveringTimer += Time.deltaTime * 5f; // Compensate for reduced update frequency
+                if (HoveringTimer > Mathf.PI * 2) HoveringTimer -= Mathf.PI * 2;
+            }
 
             SpriteTimer += Time.deltaTime;
             if (SpriteTimer > 0.125f)
@@ -86,10 +99,19 @@ public class Drone : MonoBehaviour
             if (Body.velocity.x > 0.1f) Renderer.flipX = true;
             else if (Body.velocity.x < -0.1f) Renderer.flipX = false;
 
-            Renderer.color = UnderOperation ? Color.white : new(1f, 1f, 1f, 0.5f);
+            Renderer.color = UnderOperation ? Color.white : _semiTransparentColor;
 
-            float size = UnderOperation ? ShipStatus.Instance.MaxLightRadius * DroneVisibilityRange * 5.25f : 0f;
-            LightChild.transform.localScale = new(size, size, 1f);
+            if (UnderOperation)
+            {
+                float size = ShipStatus.Instance.MaxLightRadius * DroneVisibilityRange * 5.25f;
+                // Reuse vector instead of creating new one
+                _reusableVector.Set(size, size, 1f);
+                LightChild.transform.localScale = _reusableVector;
+            }
+            else
+            {
+                LightChild.transform.localScale = Vector3.zero;
+            }
         }
         else
         {
