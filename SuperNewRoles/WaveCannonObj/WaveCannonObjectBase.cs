@@ -210,6 +210,24 @@ public abstract class WaveCannonObjectBase
         if (ability == null) return;
         WaveCannonObjectBase obj = SpawnFromType(type, ability, isFlipX, startPosition, ability.isResetKillCooldown);
         ability.SpawnedWaveCannonObject(obj);
+        
+        // 同期確認のためのRPCを送信
+        if (!source.AmOwner)
+        {
+            RpcConfirmSpawn(source, abilityId);
+        }
+    }
+    
+    [CustomRPC]
+    public static void RpcConfirmSpawn(ExPlayerControl source, ulong abilityId)
+    {
+        WaveCannonAbility ability = source.GetAbility<WaveCannonAbility>(abilityId);
+        if (ability == null) return;
+        if (ability.WaveCannonObject != null)
+        {
+            // 同期成功を確認
+            ability.OnSpawnConfirmed();
+        }
     }
     public static WaveCannonObjectBase SpawnFromType(WaveCannonType type, WaveCannonAbility ability, bool isFlipX, Vector3 startPosition, bool isResetKillCooldown = false)
     {

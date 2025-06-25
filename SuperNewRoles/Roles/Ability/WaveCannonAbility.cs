@@ -39,7 +39,17 @@ public class WaveCannonAbility : CustomButtonBase, IButtonEffect
     }
     public override void OnClick()
     {
+        // 複数回送信で信頼性向上
         WaveCannonObjectBase.RpcSpawnFromType(PlayerControl.LocalPlayer, Type, this.AbilityId, PlayerControl.LocalPlayer.MyPhysics.FlipX, PlayerControl.LocalPlayer.transform.position);
+        
+        // 少し遅延してもう一度送信（ネットワーク問題対策）
+        new LateTask(() => {
+            if (WaveCannonObject == null)
+            {
+                WaveCannonObjectBase.RpcSpawnFromType(PlayerControl.LocalPlayer, Type, this.AbilityId, PlayerControl.LocalPlayer.MyPhysics.FlipX, PlayerControl.LocalPlayer.transform.position);
+            }
+        }, 0.1f);
+        
         ResetTimer();
     }
     [CustomRPC]
@@ -75,6 +85,36 @@ public class WaveCannonAbility : CustomButtonBase, IButtonEffect
     public void SpawnedWaveCannonObject(WaveCannonObjectBase waveCannonObject)
     {
         WaveCannonObject = waveCannonObject;
+        
+        // 同期確認タイマーを開始
+        if (PlayerControl.LocalPlayer.AmOwner)
+        {
+            StartSyncConfirmation();
+        }
+    }
+    
+    private float syncConfirmationTimer = 1.0f;
+    private bool syncConfirmed = false;
+    
+    private void StartSyncConfirmation()
+    {
+        syncConfirmed = false;
+        // タイマーで同期確認
+        new LateTask(() => CheckSyncStatus(), syncConfirmationTimer);
+    }
+    
+    private void CheckSyncStatus()
+    {
+        if (!syncConfirmed && WaveCannonObject != null && PlayerControl.LocalPlayer.AmOwner)
+        {
+            // 再送信を試行
+            WaveCannonObjectBase.RpcSpawnFromType(PlayerControl.LocalPlayer, Type, this.AbilityId, PlayerControl.LocalPlayer.MyPhysics.FlipX, PlayerControl.LocalPlayer.transform.position);
+        }
+    }
+    
+    public void OnSpawnConfirmed()
+    {
+        syncConfirmed = true;
     }
     [CustomRPC]
     public void RpcShootCannon()
