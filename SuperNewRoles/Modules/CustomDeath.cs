@@ -82,7 +82,7 @@ public static class CustomDeathExtensions
             case CustomDeathType.WaveCannon:
                 if (!TryKillEvent.Invoke(source, ref player).RefSuccess)
                     break;
-                player.Player.MurderPlayer(player.Player, MurderResultFlags.Succeeded);
+                source.Player.MurderPlayer(player.Player, MurderResultFlags.Succeeded);
                 FinalStatusManager.SetFinalStatus(player, FinalStatus.WaveCannon);
                 MurderDataManager.AddMurderData(source, player);
                 break;
@@ -160,6 +160,7 @@ public static class CustomDeathExtensions
             case CustomDeathType.SuicideSecrets:
                 player.Player.Exiled();
                 FinalStatusManager.SetFinalStatus(player, FinalStatus.Suicide);
+                // 自殺なのでMurderEventは発火しない
                 break;
             case CustomDeathType.BuskerFakeDeath:
                 player.Player.Exiled();
