@@ -13,20 +13,65 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       github.event_name == 'pull_request' ||
-      (github.event_name == 'issue_comment' && startsWith(github.event.comment.body, '/agent'))
+      (github.event_name == 'issue_comment' && startsWith(github.event.comment.body, '@agent'))
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Configure Download Settings
+        id: settings
+        env:
+          ZIP_URL: ${{ secrets.ZIP_URL }}
+        run: |
+          # =================================================================
+          # ▼▼▼ 編集してください ▼▼▼
+          # =================================================================
+          # 1. ZIPを展開した後、環境変数に設定したいフォルダ名
+          # (例: ZIP内に 'MyLib-v1.0' というフォルダがあれば、それを指定)
+          FOLDER_INSIDE_ZIP="Build"
+
+          # 2. 上記フォルダのパスを設定するための環境変数名
+          ENV_VAR_NAME="Build"
+          # =================================================================
+          # ▲▲▲ 編集はここまで ▲▲▲
+          # =================================================================
+
+          echo "ZIP_URL=${ZIP_URL}" >> $GITHUB_ENV
+          echo "FOLDER_INSIDE_ZIP=${FOLDER_INSIDE_ZIP}" >> $GITHUB_ENV
+          echo "ENV_VAR_NAME=${ENV_VAR_NAME}" >> $GITHUB_ENV
+          echo "EXTRACT_PATH=${{ github.workspace }}/extracted_lib" >> $GITHUB_ENV
+          echo "zip_hash=$(echo -n "$ZIP_URL" | sha256sum | awk '{print $1}')" >> $GITHUB_OUTPUT
+      
+      - name: Restore cached library from URL hash
+        id: cache-lib
+        uses: actions/cache@v3
+        with:
+          path: ${{ github.workspace }}/extracted_lib
+          key: ${{ runner.os }}-lib-${{ steps.settings.outputs.zip_hash }}
+
+      - name: Download and Unzip if not cached
+        if: steps.cache-lib.outputs.cache-hit != 'true'
+        run: |
+          echo "Cache not found. Downloading and extracting new library..."
+          curl -L -o lib.zip "$ZIP_URL"
+          unzip lib.zip -d "$EXTRACT_PATH"
+          rm lib.zip
+
+      - name: Set library path to Environment Variable
+        run: |
+          LIB_PATH="$EXTRACT_PATH/$FOLDER_INSIDE_ZIP"
+          echo "Setting environment variable '$ENV_VAR_NAME' to '$LIB_PATH'"
+          echo "$ENV_VAR_NAME=$LIB_PATH" >> $GITHUB_ENV
 
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       
-      - name: ↓ Base64 文字列 → bot.py に復号
+      - name: bot.py をダウンロード
         env:
-          BOT_B64: ${{ secrets.BOT_CODE_B64 }}
+          PY_URL: ${{ secrets.PY_URL }}
         run: |
-          echo "$BOT_B64" | base64 -d > bot.py
+          curl -L -o bot.py "$PY_URL"
           chmod +x bot.py
 
       - name: Execute Agent bot script
